@@ -2,7 +2,6 @@
 
 A lightweight, standalone Python package for sending and receiving webhooks with optional persistence.
 
->**[Full Documentation & Examples on GitHub](https://github.com/StackTactician/LazyHooks)**
 
 ## Features
 
