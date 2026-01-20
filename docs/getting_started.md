@@ -2,64 +2,29 @@
 
 ## Installation
 
-Install LazyHooks via pip:
-
 ```bash
 pip install lazyhooks
 ```
 
-## Basic Usage
+## Documentation Index
 
-### Sending a Webhook
+- **[Sending Webhooks](sending_webhooks.md)**: Fire & forget, simple sending.
+- **[Receiving Webhooks](receiving_webhooks.md)**: Verify signatures, parse events, and handle routing.
+- **[Storage & Retries](storage_and_retries.md)**: SQLite persistence, background retry workers, and scheduling.
+- **[Security](security.md)**: Details on HMAC signatures and reply protection.
+- **[Comparisons](comparisons.md)**: Why use LazyHooks?
+- **[API Reference](api_reference.md)**: Full API details.
 
-The simplest way to send a webhook is "Fire & Forget". LazyHooks handles the signing and sending.
-
-```python
-import asyncio
-from lazyhooks import WebhookSender
-
-async def main():
-    # Initialize sender with your secret key
-    sender = WebhookSender(signing_secret="super-secret")
-    
-    # Send the webhook
-    # This automatically adds specific `X-Lh-Timestamp` and `X-Lh-Signature` headers
-    await sender.send(
-        url="https://example.com/webhook",
-        payload={
-            "event": "user.created", 
-            "user_id": 123,
-            "timestamp": "2023-10-27T10:00:00Z"
-        }
-    )
-
-asyncio.run(main())
-```
-
-### Receiving a Webhook
-
-LazyHooks provides a helper to verify the HMAC signature and timestamp of incoming webhooks.
+## Quick Example (Send & Receive)
 
 ```python
-from lazyhooks import verify_signature
+# Sender
+sender = WebhookSender("secret")
+await sender.send("http://localhost:5000", {"event": "hello"})
 
-# Example using a generic web framework handler
-def handle_incoming_webhook(request):
-    signature = request.headers.get("X-Lh-Signature")
-    timestamp = request.headers.get("X-Lh-Timestamp")
-    body_bytes = request.body
-    
-    is_valid = verify_signature(
-        payload_body=body_bytes, 
-        signature_header=signature, 
-        secret="super-secret",
-        timestamp_header=timestamp
-    )
-    
-    if is_valid:
-        return "Webhook Verified!", 200
-    else:
-        return "Invalid Signature", 401
+# Receiver
+receiver = WebhookReceiver("secret")
+@receiver.on("hello")
+async def on_hello(event):
+    print("Received!", event)
 ```
-
-[Next: Comparisons - Why LazyHooks?](./comparisons.md)

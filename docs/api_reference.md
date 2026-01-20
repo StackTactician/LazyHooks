@@ -28,7 +28,42 @@ A background coroutine that polls the storage for pending/failed events and retr
 
 ---
 
-## Signature Verification
+## WebhookReceiver
+
+`lazyhooks.receiver.WebhookReceiver`
+
+### `__init__(signing_secret, tolerance=300, on_error=None, return_errors=False, enable_metrics=False)`
+
+- **signing_secret** (`str`): The secret key used to verify signatures.
+- **tolerance** (`int`, default=300): Max signature age in seconds.
+- **on_error** (`callable`, optional): Callback for exceptions.
+- **return_errors** (`bool`, default=False): If True, re-raises exceptions instead of logging them.
+
+### `on(event_type, schema=None)`
+
+Decorator to register an event handler.
+
+- **event_type** (`str`): The event name to match (or `*` for catch-all).
+- **schema** (`pydantic.BaseModel`, optional): Data model for validation.
+
+### `middleware(func)`
+
+Decorator to register middleware.
+
+### `async process_event(event_data)`
+
+Processes a parsed event dict through middleware and handlers.
+
+### `process_event_sync(event_data)`
+
+Synchronous wrapper for `process_event`. Uses `asyncio.run()`.
+
+### `verify_and_parse(body, signature, timestamp)`
+
+Verifies signature and parses JSON body. Sync method. Returns `dict`.
+
+---
+
 
 `lazyhooks.receiver.verify_signature`
 

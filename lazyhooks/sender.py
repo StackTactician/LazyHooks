@@ -5,15 +5,36 @@ import json
 import time
 import uuid
 import aiohttp
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union, List
 from .storage.base import BaseStorage, WebhookEvent
+from .monitoring import MonitoringAdapter
+from .exceptions import (
+    WebhookError, WebhookNetworkError, WebhookTimeoutError,
+    WebhookHTTPError, WebhookClientError, WebhookServerError,
+    WebhookRateLimitError, WebhookBadRequestError, WebhookUnauthorizedError,
+    WebhookNotFoundError
+)
 
 class WebhookSender:
-    def __init__(self, signing_secret: str, storage: Optional[BaseStorage] = None, default_timeout: float = 10.0):
+    def __init__(self, signing_secret: str, storage: Union[BaseStorage, str, None] = None, default_timeout: float = 10.0, retry_delays: Optional[List[int]] = None):
         self.signing_secret = signing_secret
-        self.storage = storage
         self.default_timeout = default_timeout
-        self.retry_delays = [60, 300, 1800, 3600]
+        self.retry_delays = retry_delays if retry_delays is not None else [60, 300, 1800, 3600]
+
+        if isinstance(storage, str):
+            if storage.startswith("redis://"):
+                from .storage.redis import RedisStorage
+                self.storage = RedisStorage(storage)
+            elif storage.startswith("sqlite://") or storage.endswith(".db"):
+                from .storage.sqlite import SQLiteStorage
+                path = storage.replace("sqlite://", "")
+                self.storage = SQLiteStorage(path)
+            else:
+                 raise ValueError(f"Unknown storage URL scheme: {storage}")
+        else:
+            self.storage = storage
+
+        self.monitor = MonitoringAdapter()
 
     def _sign_payload(self, payload_body: bytes, timestamp: int) -> str:
         # Sign: "timestamp.body"
@@ -75,30 +96,124 @@ class WebhookSender:
         if event.headers:
             headers.update(event.headers)
 
+        self.monitor.log_attempt(event.id, event.url, event.attempts + 1)
+        start_time = time.time()
+
         try:
             timeout = aiohttp.ClientTimeout(total=event.timeout)
             
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(event.url, data=payload_bytes, headers=headers) as resp:
-                    resp.raise_for_status()
-                    event.status = "success"
-                    event.last_error = None
-                    if self.storage:
-                        await self.storage.update_event(event)
-                    
-        except Exception as e:
+                try:
+                    async with session.post(event.url, data=payload_bytes, headers=headers) as resp:
+                        duration = time.time() - start_time
+                        
+                        # Handle HTTP Errors
+                        if resp.status >= 400:
+                            body = await resp.text()
+                            msg = f"HTTP {resp.status}"
+                            kwargs = {
+                                "status_code": resp.status,
+                                "response_body": body,
+                                "response_headers": dict(resp.headers),
+                                "url": event.url,
+                                "webhook_id": event.id,
+                                "attempt": event.attempts + 1
+                            }
+                            
+                            if resp.status == 429:
+                                raise WebhookRateLimitError(f"Rate limited: {msg}", **kwargs)
+                            elif resp.status == 400:
+                                raise WebhookBadRequestError(f"Bad Request: {msg}", **kwargs)
+                            elif resp.status == 401:
+                                raise WebhookUnauthorizedError(f"Unauthorized: {msg}", **kwargs)
+                            elif resp.status == 404:
+                                raise WebhookNotFoundError(f"Not Found: {msg}", **kwargs)
+                            elif 400 <= resp.status < 500:
+                                raise WebhookClientError(msg, **kwargs)
+                            elif resp.status >= 500:
+                                raise WebhookServerError(msg, **kwargs)
+                        
+                        # Success
+                        self.monitor.log_success(event.id, event.url, event.attempts + 1, duration, resp.status)
+                        event.status = "success"
+                        event.last_error = None
+                        if self.storage:
+                            await self.storage.update_event(event)
+                            
+                except asyncio.TimeoutError:
+                    raise WebhookTimeoutError(
+                        f"Request timeout after {event.timeout}s",
+                        timeout=event.timeout,
+                        url=event.url,
+                        webhook_id=event.id,
+                        attempt=event.attempts + 1
+                    )
+                except aiohttp.ClientError as e:
+                    # Catch-all for other aiohttp errors (connection, dns, etc)
+                    raise WebhookNetworkError(
+                        f"Network error: {str(e)}",
+                        url=event.url,
+                        webhook_id=event.id,
+                        attempt=event.attempts + 1,
+                        original_exception=e
+                    )
+
+        except WebhookError as e:
+            # We caught one of our own typed exceptions
             event.attempts += 1
-            event.last_error = str(e)
+            event.last_error = e.message
             
-            if event.attempts <= len(self.retry_delays):
+            self.monitor.log_failure(event.id, event.url, event.attempts, e.message)
+            
+            # Determine if retryable
+            should_retry = False
+            # Network errors are retryable
+            if isinstance(e, (WebhookNetworkError, WebhookServerError, WebhookRateLimitError)):
+                 should_retry = True
+            elif isinstance(e, WebhookClientError):
+                 # 4xx (except 429) are generally not retryable
+                 should_retry = False
+            
+            if should_retry and event.attempts <= len(self.retry_delays):
                 delay = self.retry_delays[event.attempts - 1]
+                
+                # Respect Retry-After if present
+                if isinstance(e, WebhookRateLimitError) and hasattr(e, 'retry_after'):
+                     if e.retry_after > delay:
+                         delay = e.retry_after
+
                 event.status = "failed"
                 event.next_retry_at = time.time() + delay
+                self.monitor.log_retry(event.id, event.url, event.next_retry_at)
             else:
                 event.status = "dead"
             
             if self.storage:
                 await self.storage.update_event(event)
+            else:
+                # If no storage, bubbling up the exception allows caller to handle it
+                # But we just mutated 'event', which is local.
+                # If the user called await sender.send(), they expect it to succeed or fail.
+                # If it failed and we have no storage to retry, we MUST raise exceptions so they know.
+                raise e
+
+        except Exception as e:
+            # Catch-all for unexpected bugs (serialization, etc)
+            event.attempts += 1
+            event.last_error = f"Unexpected error: {str(e)}"
+            self.monitor.log_failure(event.id, event.url, event.attempts, str(e))
+            
+            if self.storage:
+                 # Treat unknown errors as retryable purely for resilience, or deadly?
+                 # Let's retry generic errors conservatively
+                 if event.attempts <= len(self.retry_delays):
+                     delay = self.retry_delays[event.attempts - 1]
+                     event.status = "failed"
+                     event.next_retry_at = time.time() + delay
+                     await self.storage.update_event(event)
+                 else:
+                     event.status = "dead"
+                     await self.storage.update_event(event)
             else:
                 raise e
 

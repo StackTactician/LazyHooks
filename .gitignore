@@ -89,3 +89,19 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Private / Internal
+tests/
+PUBLISHING.md
+*.log
+

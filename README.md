@@ -25,10 +25,22 @@ LazyHooks prioritizes security by design:
 
 ## Documentation
 
-- **[Getting Started](docs/getting_started.md)**: Installation and basic usage.
-- **[Comparisons](docs/comparisons.md)**: See LazyHooks vs standard FastAPI/Django/Celery.
-- **[Advanced Usage](docs/advanced_usage.md)**: Persistence, retries, headers, and timeouts.
-- **[API Reference](docs/api_reference.md)**: Detailed API documentation.
+### 🔰 Beginner Tutorials (Start Here!)
+1. **[What are Webhooks?](docs/tutorials/01_what_are_webhooks.md)**: The basics explained simply.
+2. **[Installation](docs/tutorials/02_installation.md)**: Quick setup guide.
+3. **[Your First Webhook](docs/tutorials/03_your_first_webhook.md)**: Send "Hello World" in 2 minutes.
+4. **[Receiving Webhooks](docs/tutorials/04_receiving_webhooks.md)**: Listen for events securely.
+5. **[Testing with Tunnels](docs/tutorials/05_testing_with_tunnels.md)**: Go live with ngrok.
+
+### 📚 Core Documentation
+
+- **[Getting Started](docs/getting_started.md)**: Installation and quick examples.
+- **[Sending Webhooks](docs/sending_webhooks.md)**: Sending usage.
+- **[Receiving Webhooks](docs/receiving_webhooks.md)**: Receiver usage.
+- **[Storage & Retries](docs/storage_and_retries.md)**: Persistence and reliability.
+- **[Security](docs/security.md)**: Security details.
+- **[Comparisons](docs/comparisons.md)**: Alternatives analysis.
+- **[API Reference](docs/api_reference.md)**: API docs.
 
 ## Quick Example
 
