@@ -1,4 +1,7 @@
 # LazyHooks
+<div align="center">
+  <img src="assets/logo.png" alt="LazyHooks Logo" width="200">
+</div>
 
 A lightweight, standalone Python package for sending and receiving webhooks with optional persistence.
 
@@ -25,14 +28,14 @@ LazyHooks prioritizes security by design:
 
 ## Documentation
 
-### 🔰 Beginner Tutorials (Start Here!)
+### Beginner Tutorials (Start Here!)
 1. **[What are Webhooks?](docs/tutorials/01_what_are_webhooks.md)**: The basics explained simply.
 2. **[Installation](docs/tutorials/02_installation.md)**: Quick setup guide.
 3. **[Your First Webhook](docs/tutorials/03_your_first_webhook.md)**: Send "Hello World" in 2 minutes.
 4. **[Receiving Webhooks](docs/tutorials/04_receiving_webhooks.md)**: Listen for events securely.
 5. **[Testing with Tunnels](docs/tutorials/05_testing_with_tunnels.md)**: Go live with ngrok.
 
-### 📚 Core Documentation
+### Core Documentation
 
 - **[Getting Started](docs/getting_started.md)**: Installation and quick examples.
 - **[Sending Webhooks](docs/sending_webhooks.md)**: Sending usage.
