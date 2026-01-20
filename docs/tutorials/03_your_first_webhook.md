@@ -25,12 +25,12 @@ data = {
 
 # 3. Send it!
 try:
-    print(f"🚀 Sending webhook to https://httpbin.org/post...")
+    print(f" Sending webhook to https://httpbin.org/post...")
     sender.send_sync("https://httpbin.org/post", data)
-    print("✅ Webhook sent successfully!")
+    print(" Webhook sent successfully!")
     print("(The server received it and sent a 200 OK back)")
 except Exception as e:
-    print(f"❌ Something went wrong: {e}")
+    print(f" Something went wrong: {e}")
 ```
 
 ## Run It
@@ -42,7 +42,7 @@ python send_hook.py
 ```
 
 You should see:
-> ✅ Webhook sent successfully!
+> Webhook sent successfully!
 
 ## What just happened?
 
