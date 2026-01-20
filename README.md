@@ -38,4 +38,3 @@ For receiving webhooks and more examples, check the [Getting Started](docs/getti
 - **GitHub**: [https://github.com/StackTactician/LazyHooks](https://github.com/StackTactician/LazyHooks)
 - **Issues**: [https://github.com/StackTactician/LazyHooks/issues](https://github.com/StackTactician/LazyHooks/issues)
 - **Documentation**: See the GitHub repo for full docs, advanced usage, and examples.
-
