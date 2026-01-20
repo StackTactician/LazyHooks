@@ -1,6 +1,6 @@
 # LazyHooks
 <div align="center">
-  <img src="assets/logo.png" alt="LazyHooks Logo" width="200">
+  <img src="https://raw.githubusercontent.com/StackTactician/LazyHooks/main/assets/logo.png" alt="LazyHooks Logo" width="200">
 </div>
 
 A lightweight, standalone Python package for sending and receiving webhooks with optional persistence.
