@@ -23,6 +23,7 @@ async def main():
     sender = WebhookSender(signing_secret="super-secret")
     
     # Send the webhook
+    # This automatically adds specific `X-Lh-Timestamp` and `X-Lh-Signature` headers
     await sender.send(
         url="https://example.com/webhook",
         payload={
@@ -37,24 +38,22 @@ asyncio.run(main())
 
 ### Receiving a Webhook
 
-LazyHooks provides a helper to verify the HMAC signature of incoming webhooks.
+LazyHooks provides a helper to verify the HMAC signature and timestamp of incoming webhooks.
 
 ```python
 from lazyhooks import verify_signature
 
 # Example using a generic web framework handler
 def handle_incoming_webhook(request):
-    # 1. Get the signature from headers
-    signature = request.headers.get("X-Hub-Signature-256")
-    
-    # 2. Get the raw body bytes
+    signature = request.headers.get("X-Lh-Signature")
+    timestamp = request.headers.get("X-Lh-Timestamp")
     body_bytes = request.body
     
-    # 3. Verify
     is_valid = verify_signature(
         payload_body=body_bytes, 
         signature_header=signature, 
-        secret="super-secret"
+        secret="super-secret",
+        timestamp_header=timestamp
     )
     
     if is_valid:

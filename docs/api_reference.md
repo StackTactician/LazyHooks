@@ -32,13 +32,15 @@ A background coroutine that polls the storage for pending/failed events and retr
 
 `lazyhooks.receiver.verify_signature`
 
-### `verify_signature(payload_body, signature_header, secret)`
+### `verify_signature(payload_body, signature_header, secret, timestamp_header, tolerance=300)`
 
-Verifies that the `X-Hub-Signature-256` header matches the HMAC-SHA256 of the request body.
+Verifies that the signature matches the payload AND that the request is fresh (default 5 minutes).
 
 - **payload_body** (`bytes`): The raw request body bytes.
-- **signature_header** (`str`): The content of the `X-Hub-Signature-256` header (expected format: `sha256=<hash>`).
+- **signature_header** (`str`): The content of the `X-Lh-Signature` header (expected format: `v1=<hash>`).
 - **secret** (`str`): The shared signing secret.
+- **timestamp_header** (`str`): The content of the `X-Lh-Timestamp` header.
+- **tolerance** (`int`, default=300): The maximum allowed age of the request in seconds.
 
 **Returns:** `bool` (`True` if valid, `False` otherwise).
 

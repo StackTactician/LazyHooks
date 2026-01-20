@@ -6,4 +6,4 @@ from .sender import WebhookSender
 from .receiver import verify_signature
 
 __all__ = ["WebhookSender", "verify_signature"]
-__version__ = "0.1.3"
+__version__ = "0.2.0"

@@ -12,21 +12,15 @@ from lazyhooks import WebhookSender
 from lazyhooks.storage.sqlite import SQLiteStorage
 
 async def main():
-    # 1. Initialize Storage
     storage = SQLiteStorage("webhooks.db")
-    
-    # 2. Initialize Sender with storage
     sender = WebhookSender(signing_secret="my-secret", storage=storage)
     
-    # 3. Send a webhook
     # If this fails, it is saved to 'webhooks.db' with status='failed'
     await sender.send("https://example.com/endpoint", {"data": "important"})
     
-    # 4. Start the Retry Worker (usually run this as a background task)
-    # This worker polls the DB for failed events and retries them
+    # Background worker polls for failed events and retries them
     asyncio.create_task(sender.retry_worker())
     
-    # Keep the process alive for demo purposes
     await asyncio.sleep(60)
 
 asyncio.run(main())

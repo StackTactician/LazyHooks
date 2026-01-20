@@ -15,10 +15,12 @@ class WebhookSender:
         self.default_timeout = default_timeout
         self.retry_delays = [60, 300, 1800, 3600]
 
-    def _sign_payload(self, payload_body: bytes) -> str:
+    def _sign_payload(self, payload_body: bytes, timestamp: int) -> str:
+        # Sign: "timestamp.body"
+        to_sign = f"{timestamp}.".encode() + payload_body
         return hmac.new(
             self.signing_secret.encode(),
-            payload_body,
+            to_sign,
             hashlib.sha256
         ).hexdigest()
 
@@ -60,12 +62,14 @@ class WebhookSender:
 
     async def _attempt_delivery(self, event: WebhookEvent):
         payload_bytes = json.dumps(event.payload).encode()
-        signature = self._sign_payload(payload_bytes)
+        timestamp = int(time.time())
+        signature = self._sign_payload(payload_bytes, timestamp)
         
         headers = {
             "Content-Type": "application/json",
-            "X-Hub-Signature-256": f"sha256={signature}",
-            "User-Agent": "LazyHooks-Webhook/0.1.0"
+            "X-Lh-Timestamp": str(timestamp),
+            "X-Lh-Signature": f"v1={signature}",
+            "User-Agent": "LazyHooks-Webhook/0.2.0"
         }
         
         if event.headers:

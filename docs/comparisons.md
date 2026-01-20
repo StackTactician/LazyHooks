@@ -11,13 +11,14 @@ We'll look at three scenarios:
 
 ## 1. FastAPI: Standard Webhook Receiver
 
-The manual approach requires repetitive HMAC verification code.
+The manual approach requires verifying the signature **and** checking the timestamp freshness.
 
 ### WITHOUT LazyHooks
 
 ```python
 import hmac
 import hashlib
+import time
 from fastapi import FastAPI, Request, HTTPException
 
 app = FastAPI()
@@ -26,16 +27,25 @@ SECRET = "my_secret_key"
 @app.post("/webhook")
 async def manual_receiver(request: Request):
     body = await request.body()
-    signature_header = request.headers.get("X-Hub-Signature-256")
+    signature_header = request.headers.get("X-Lh-Signature")
+    timestamp_header = request.headers.get("X-Lh-Timestamp")
     
-    if not signature_header or not signature_header.startswith("sha256="):
-        raise HTTPException(403, "Missing signature")
+    if not signature_header or not timestamp_header:
+        raise HTTPException(403, "Missing headers")
 
-    # Manually compute HMAC
-    expected = hmac.new(SECRET.encode(), body, hashlib.sha256).hexdigest()
-    incoming = signature_header.split("=")[1]
+    try:
+        timestamp = int(timestamp_header)
+    except ValueError:
+        raise HTTPException(403, "Invalid timestamp")
+
+    if int(time.time()) - timestamp > 300: # 5 min tolerance
+        raise HTTPException(403, "Request too old")
+
+    to_sign = f"{timestamp}.".encode() + body
     
-    # Secure comparison to prevent timing attacks
+    expected = hmac.new(SECRET.encode(), to_sign, hashlib.sha256).hexdigest()
+    incoming = signature_header.split("v1=")[1]
+    
     if not hmac.compare_digest(expected, incoming):
         raise HTTPException(403, "Invalid signature")
 
@@ -44,7 +54,7 @@ async def manual_receiver(request: Request):
 
 ### WITH LazyHooks
 
-LazyHooks handles the extraction, computation, and secure comparison in one line.
+LazyHooks handles timestamp checking, string reconstruction, and secure comparison in one line.
 
 ```python
 from fastapi import FastAPI, Request, HTTPException
@@ -56,10 +66,11 @@ SECRET = "my_secret_key"
 @app.post("/webhook")
 async def rapid_receiver(request: Request):
     body = await request.body()
-    signature = request.headers.get("X-Hub-Signature-256")
+    signature = request.headers.get("X-Lh-Signature")
+    timestamp = request.headers.get("X-Lh-Timestamp")
     
-    # One-liner verification
-    if not verify_signature(body, signature, SECRET):
+    # One-liner verification (includes timestamp check)
+    if not verify_signature(body, signature, SECRET, timestamp):
         raise HTTPException(403, "Invalid signature")
 
     return {"status": "verified"}
@@ -69,13 +80,12 @@ async def rapid_receiver(request: Request):
 
 ## 2. Django: Dealing with bytes and strings
 
-Django request bodies can be tricky to handle correctly for signature verification.
-
 ### WITHOUT LazyHooks
 
 ```python
 import hmac
 import hashlib
+import time
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
@@ -84,18 +94,20 @@ def manual_view(request):
     if request.method != "POST":
          return HttpResponse("Method not allowed", status=405)
 
-    signature = request.headers.get("X-Hub-Signature-256")
-    if not signature:
-         return HttpResponseForbidden("Missing signature")
+    signature_header = request.headers.get("X-Lh-Signature")
+    timestamp_header = request.headers.get("X-Lh-Timestamp")
 
-    # Manually construct expected signature
-    expected = hmac.new(
-        b"my_secret_key", 
-        request.body, 
-        hashlib.sha256
-    ).hexdigest()
+    if not signature_header or not timestamp_header:
+         return HttpResponseForbidden("Missing headers")
+         
+    # Timestamp check...
+    if int(time.time()) - int(timestamp_header) > 300:
+        return HttpResponseForbidden("Expired")
 
-    incoming = signature.split("=")[1]
+    to_sign = f"{timestamp_header}.".encode() + request.body
+    
+    expected = hmac.new(b"my_secret_key", to_sign, hashlib.sha256).hexdigest()
+    incoming = signature_header.split("v1=")[1]
     
     if not hmac.compare_digest(expected, incoming):
         return HttpResponseForbidden("Invalid signature")
@@ -112,9 +124,10 @@ from lazyhooks import verify_signature
 
 @csrf_exempt
 def rapid_view(request):
-    signature = request.headers.get("X-Hub-Signature-256")
+    signature = request.headers.get("X-Lh-Signature")
+    timestamp = request.headers.get("X-Lh-Timestamp")
     
-    if not verify_signature(request.body, signature, "my_secret_key"):
+    if not verify_signature(request.body, signature, "my_secret_key", timestamp):
         return HttpResponseForbidden("Invalid signature")
 
     return HttpResponse("Verified")
@@ -137,16 +150,23 @@ import requests
 import hmac
 import hashlib
 import json
+import time
 
 app = Celery('tasks', broker='redis://localhost:6379/0')
 
 @app.task(bind=True, max_retries=3)
 def send_webhook_task(self, url, payload):
-    # 1. Manual Signing
+    # 1. Manual Signing (Complex!)
     payload_bytes = json.dumps(payload).encode()
-    signature = hmac.new(b"secret", payload_bytes, hashlib.sha256).hexdigest()
+    timestamp = int(time.time())
+    to_sign = f"{timestamp}.".encode() + payload_bytes
     
-    headers = {"X-Hub-Signature-256": f"sha256={signature}"}
+    signature = hmac.new(b"secret", to_sign, hashlib.sha256).hexdigest()
+    
+    headers = {
+        "X-Lh-Signature": f"v1={signature}",
+        "X-Lh-Timestamp": str(timestamp)
+    }
     
     try:
         # 2. Sending
