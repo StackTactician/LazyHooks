@@ -34,6 +34,6 @@ For receiving webhooks and more examples, check the [Getting Started](docs/getti
 
 ## Links
 
-- **GitHub**: [https://github.com/StackTactician/LazyHooks](https://github.com/StackTactician/LazyHooks)
+- **PyPI**: [https://pypi.org/project/lazyhooks](https://pypi.org/project/lazyhooks)
 - **Issues**: [https://github.com/StackTactician/LazyHooks/issues](https://github.com/StackTactician/LazyHooks/issues)
 - **Documentation**: See the GitHub repo for full docs, advanced usage, and examples.
