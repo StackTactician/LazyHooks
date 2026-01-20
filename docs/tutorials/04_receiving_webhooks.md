@@ -39,12 +39,12 @@ def handle_webhook():
     # from last year (timestamp expired), we reject it.
     try:
         verify_signature(body, signature, SECRET, timestamp)
-        print("\n✅ SECURE WEBHOOK VERIFIED!")
-        print(f"📩 Data received: {request.json}")
+        print("\nSECURE WEBHOOK VERIFIED!")
+        print(f"Data received: {request.json}")
         return "OK", 200
         
     except Exception as e:
-        print(f"❌ Hack attempt? Verification failed: {e}")
+        print(f"Hack attempt? Verification failed: {e}")
         return "Unauthorized", 401
 
 if __name__ == '__main__':
@@ -71,10 +71,10 @@ if __name__ == '__main__':
 
 **Result:**
 Your receiver terminal should light up with:
-> ✅ Secure webhook verified!
+> Secure webhook verified!
 > Data received: {'message': 'Hello World!', 'status': 'awesome'}
 
-## Congratulations! 🎉
+## Congratulations!
 
 You have built a complete, secure webhook pipeline. You are sending data, signing it for security, and verifying it on the other end.
 
