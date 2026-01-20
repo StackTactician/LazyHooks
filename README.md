@@ -2,7 +2,6 @@
 
 A lightweight, standalone Python package for sending and receiving webhooks with optional persistence.
 
->**[Full Documentation & Examples on GitHub](https://github.com/StackTactician/LazyHooks)**
 
 ## Features
 
@@ -64,6 +63,6 @@ def handle_webhook(request):
 
 ## Links
 
-- **GitHub**: [https://github.com/StackTactician/LazyHooks](https://github.com/StackTactician/LazyHooks)
+- **PyPI**: [https://pypi.org/project/lazyhooks](https://pypi.org/project/lazyhooks)
 - **Issues**: [https://github.com/StackTactician/LazyHooks/issues](https://github.com/StackTactician/LazyHooks/issues)
 - **Documentation**: See the GitHub repo for full docs, advanced usage, and examples.
