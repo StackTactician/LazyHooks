@@ -45,8 +45,13 @@ def verify_signature(payload_body: bytes, signature_header: str, secret: str, ti
         raise InvalidSignatureError("Invalid timestamp format")
 
     now = int(time.time())
-    if now - timestamp > tolerance:
-        raise ExpiredTimestampError(f"Timestamp expired. Age: {now - timestamp}s, Limit: {tolerance}s", age=now-timestamp, max_age=tolerance)
+    age = now - timestamp
+    if abs(age) > tolerance:
+        raise ExpiredTimestampError(
+            f"Timestamp outside tolerance window. Skew: {age}s, Limit: {tolerance}s",
+            age=age,
+            max_age=tolerance,
+        )
 
     # 2. Verify Signature
     # reconstruct: "timestamp.body"
@@ -125,7 +130,7 @@ class WebhookReceiver:
             if not handler_info:
                 # Try simple wildcard matching event.*
                 for key, info in self.handlers.items():
-                    if key.endswith("*") and event_type.startswith(key[:-1]):
+                    if key.endswith("*") and isinstance(event_type, str) and event_type.startswith(key[:-1]):
                          handler_info = info
                          break
             
